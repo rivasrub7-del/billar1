@@ -1,0 +1,844 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cyber Pool Bar - Smart Rules & Manual Edition</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+        }
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            height: 100vh;
+            background: #020205;
+            color: #ffffff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+        }
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            padding: 8px 20px;
+            background: rgba(10, 6, 4, 0.85);
+            border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+            z-index: 10;
+        }
+        h1 {
+            margin: 0;
+            font-size: 15px;
+            letter-spacing: 2px;
+            color: #00f0ff;
+            text-shadow: 0 0 8px rgba(0, 240, 255, 0.6);
+        }
+        #stats-nivel {
+            font-size: 13px;
+            font-weight: bold;
+            color: #39ff14;
+            text-shadow: 0 0 6px rgba(57, 255, 20, 0.5);
+        }
+        #menu-juegos {
+            display: flex;
+            gap: 8px;
+        }
+        button {
+            background: #151525;
+            color: #00f0ff;
+            border: 1px solid #00f0ff;
+            padding: 4px 10px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 11px;
+            border-radius: 4px;
+            transition: 0.2s;
+            text-shadow: 0 0 4px rgba(0,240,255,0.5);
+            box-shadow: 0 0 6px rgba(0,240,255,0.2);
+        }
+        button.activo {
+            background: #00f0ff;
+            color: #06060c;
+            box-shadow: 0 0 10px #00f0ff;
+        }
+        button:hover {
+            background: #ff007f;
+            border-color: #ff007f;
+            color: #ffffff;
+            box-shadow: 0 0 10px #ff007f;
+        }
+        .btn-reglas {
+            background: #2a1535;
+            color: #ff007f;
+            border: 1px solid #ff007f;
+        }
+        .btn-reglas:hover {
+            background: #ff007f;
+            color: #ffffff;
+        }
+        #info {
+            font-size: 12px;
+            color: #ff007f;
+            text-shadow: 0 0 6px rgba(255, 0, 127, 0.5);
+            font-weight: bold;
+        }
+        .contenedor-juego {
+            flex: 1;
+            width: 100vw;
+            height: calc(100vh - 45px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: radial-gradient(circle at center, #14111c 0%, #030307 100%);
+            position: relative;
+        }
+        canvas {
+            width: 95vw;
+            height: 90vh;
+            max-width: 1300px;
+            max-height: 680px;
+            border-radius: 8px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.9), inset 0 0 20px rgba(0,0,0,0.8);
+            cursor: crosshair;
+            display: block;
+        }
+        /* Modal de Reglas */
+        #modal-reglas {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 550px;
+            max-width: 90vw;
+            background: rgba(12, 10, 20, 0.95);
+            border: 2px solid #00f0ff;
+            box-shadow: 0 0 25px rgba(0, 240, 255, 0.5);
+            border-radius: 10px;
+            padding: 20px;
+            z-index: 100;
+            color: #ffffff;
+        }
+        #modal-reglas h2 {
+            margin-top: 0;
+            color: #00f0ff;
+            font-size: 18px;
+            text-align: center;
+            text-shadow: 0 0 8px rgba(0,240,255,0.4);
+        }
+        #modal-reglas p {
+            font-size: 13px;
+            line-height: 1.5;
+            color: #dddddd;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        #modal-reglas button {
+            display: block;
+            margin: 15px auto 0 auto;
+            background: #00f0ff;
+            color: #000;
+            padding: 6px 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>EL BILLAR DE ANGELITO DEL VILLAR - DONDE CERRAMOS HASTA QUE SE VA EL ULTIMO CLIENTE</h1>
+        <div id="stats-nivel">Grupo: Por definir</div>
+        <div id="info">Turno: Jugador (Tú) - Arrastra hacia atrás para apuntar y tirar</div>
+        <div id="menu-juegos">
+            <button id="btn-8" class="activo" onclick="cambiarModo('8')">Bola 8</button>
+            <button id="btn-pull" onclick="cambiarModo('pull')">Pull / Rotación</button>
+            <button id="btn-15" onclick="cambiarModo('15')">Juego 15</button>
+            <button class="btn-reglas" onclick="mostrarReglas()">📖 Reglas</button>
+        </div>
+    </header>
+
+    <div class="contenedor-juego">
+        <canvas id="billarCanvas" width="1200" height="630"></canvas>
+        
+        <div id="modal-reglas">
+            <h2 id="titulo-reglas">Reglas del Juego</h2>
+            <p id="texto-reglas">Contenido de reglas...</p>
+            <button onclick="cerrarReglas()">Entendido</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('billarCanvas');
+        const ctx = canvas.getContext('2d');
+        const infoDiv = document.getElementById('info');
+        const statsNivelDiv = document.getElementById('stats-nivel');
+
+        let modoJuego = '8'; 
+        let turnoJugador = true; 
+        
+        let grupoJugador = null; 
+        let grupoCPU = null;
+        let primerImpactoBlanca = null; 
+        let bolasEmbocadasEsteTiro = [];
+
+        const textosReglas = {
+            '8': "BOLA 8:\n\n• La bola 8 se coloca estrictamente en el centro del triángulo.\n• La primera bola (ápice) se sitúa en el punto de pie.\n• Las esquinas de la base inferior deben tener una bola de distinto tipo (una lisa y una rayada).\n• El grupo (lisas 1-7 o rayadas 9-15) se define cuando un jugador emboca legalmente su primera bola después del saque.\n• Tienes que meter todo tu grupo y finalmente embocar la bola 8 legalmente para ganar.",
+            'pull': "PULL / ROTACIÓN:\n\n• Orden obligatorio: La bola blanca debe golpear primero a la bola con el número más bajo que quede sobre la mesa.\n• No es necesario embocar las bolas en orden correlativo, pero el primer contacto de la blanca debe ser rigurosamente con la menor numerada.\n• Si golpeas otra bola primero, cometes falta y cedes el turno.",
+            '15': "JUEGO 15:\n\n• Variante avanzada de orden estricto y asignación numérica.\n• Debes embocar las bolas siguiendo la secuencia lógica o cumpliendo los objetivos numéricos sin cometer faltas con la bola blanca.\n• La blanca debe impactar primero la bola menor disponible."
+        };
+
+        function mostrarReglas() {
+            document.getElementById('titulo-reglas').innerText = "Reglas: " + modoJuego.toUpperCase();
+            document.getElementById('texto-reglas').innerText = textosReglas[modoJuego];
+            document.getElementById('modal-reglas').style.display = 'block';
+        }
+
+        function cerrarReglas() {
+            document.getElementById('modal-reglas').style.display = 'none';
+        }
+
+        const mesa = {
+            x: 55,
+            y: 55,
+            ancho: 1090,
+            alto: 520,
+            friccion: 0.965,
+            amortiguacionPared: 0.82
+        };
+
+        const buchacas = [
+            { x: mesa.x - 2, y: mesa.y - 2, radio: 30, centroX: mesa.x + 8, centroY: mesa.y + 8 },
+            { x: mesa.x + mesa.ancho / 2, y: mesa.y - 8, radio: 26, centroX: mesa.x + mesa.ancho / 2, centroY: mesa.y + 4 },
+            { x: mesa.x + mesa.ancho + 2, y: mesa.y - 2, radio: 30, centroX: mesa.x + mesa.ancho - 8, centroY: mesa.y + 8 },
+            { x: mesa.x - 2, y: mesa.y + mesa.alto + 2, radio: 30, centroX: mesa.x + 8, centroY: mesa.y + mesa.alto - 8 },
+            { x: mesa.x + mesa.ancho / 2, y: mesa.y + mesa.alto + 8, radio: 26, centroX: mesa.x + mesa.ancho / 2, centroY: mesa.y + mesa.alto - 4 },
+            { x: mesa.x + mesa.ancho + 2, y: mesa.y + mesa.alto + 2, radio: 30, centroX: mesa.x + mesa.ancho - 8, centroY: mesa.y + mesa.alto - 8 }
+        ];
+
+        class Bola {
+            constructor(x, y, radio, color, esBlanca = false, numero = 0, esRayada = false) {
+                this.x = x;
+                this.y = y;
+                this.vx = 0;
+                this.vy = 0;
+                this.radio = radio;
+                this.color = color;
+                this.esBlanca = esBlanca;
+                this.numero = numero;
+                this.esRayada = esRayada;
+                this.enJuego = true;
+                
+                this.rotacionX = Math.random() * Math.PI;
+                this.rotacionY = Math.random() * Math.PI;
+                
+                this.cayendo = false;
+                this.targetCaidaX = 0;
+                this.targetCaidaY = 0;
+                this.escalaCaida = 1;
+                this.alphaCaida = 1;
+            }
+
+            dibujar() {
+                if (!this.enJuego && !this.cayendo) return;
+
+                ctx.save();
+                if (this.cayendo) {
+                    ctx.translate(this.x, this.y);
+                    ctx.scale(this.escalaCaida, this.escalaCaida);
+                    ctx.globalAlpha = this.alphaCaida;
+                    ctx.translate(-this.x, -this.y);
+                }
+
+                ctx.beginPath();
+                ctx.arc(this.x + 4, this.y + 5, this.radio, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.65)';
+                ctx.fill();
+                ctx.closePath();
+
+                const gradiente = ctx.createRadialGradient(
+                    this.x - 3, this.y - 3, 2,
+                    this.x, this.y, this.radio
+                );
+                gradiente.addColorStop(0, '#ffffff');
+                gradiente.addColorStop(0.35, this.color);
+                gradiente.addColorStop(0.95, '#050505');
+
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radio, 0, Math.PI * 2);
+                ctx.fillStyle = gradiente;
+                ctx.fill();
+                ctx.strokeStyle = 'rgba(0, 0, 0, 0.8)';
+                ctx.lineWidth = 1.8;
+                ctx.stroke();
+                ctx.closePath();
+
+                if (this.esRayada) {
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.radio * 0.7, -Math.PI/2, Math.PI/2);
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fill();
+                    ctx.closePath();
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.radio * 0.7, Math.PI/2, -Math.PI/2);
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fill();
+                    ctx.closePath();
+                }
+
+                if (!this.esBlanca && this.numero > 0) {
+                    ctx.save();
+                    ctx.translate(this.x, this.y);
+                    ctx.rotate(this.rotacionX);
+
+                    ctx.beginPath();
+                    ctx.arc(0, 0, this.radio * 0.45, 0, Math.PI * 2);
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fill();
+                    ctx.closePath();
+
+                    ctx.fillStyle = '#000000';
+                    ctx.font = 'bold 12px sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(this.numero, 0, 0);
+                    ctx.restore();
+                }
+                ctx.restore();
+            }
+
+            actualizar() {
+                if (this.cayendo) {
+                    this.x += (this.targetCaidaX - this.x) * 0.2;
+                    this.y += (this.targetCaidaY - this.y) * 0.2;
+                    this.escalaCaida -= 0.08;
+                    this.alphaCaida -= 0.08;
+                    if (this.escalaCaida <= 0) {
+                        this.cayendo = false;
+                        this.enJuego = false;
+                    }
+                    return;
+                }
+
+                if (!this.enJuego) return;
+
+                this.x += this.vx;
+                this.y += this.vy;
+
+                let velocidadLineal = Math.hypot(this.vx, this.vy);
+                if (velocidadLineal > 0.05) {
+                    this.rotacionX += velocidadLineal / this.radio;
+                    this.rotacionY += velocidadLineal / this.radio;
+                }
+
+                if (velocidadLineal < 1.2) {
+                    this.vx *= 0.92;
+                    this.vy *= 0.92;
+                } else {
+                    this.vx *= mesa.friccion;
+                    this.vy *= mesa.friccion;
+                }
+
+                if (Math.abs(this.vx) < 0.08) this.vx = 0;
+                if (Math.abs(this.vy) < 0.08) this.vy = 0;
+
+                for (let b of buchacas) {
+                    let distanciaBuchaca = Math.hypot(this.x - b.x, this.y - b.y);
+                    if (distanciaBuchaca < b.radio) {
+                        this.cayendo = true;
+                        this.targetCaidaX = b.centroX;
+                        this.targetCaidaY = b.centroY;
+                        this.vx = 0;
+                        this.vy = 0;
+                        registrarEmbocada(this);
+                        break;
+                    }
+                }
+
+                if (this.x - this.radio < mesa.x) {
+                    this.x = mesa.x + this.radio;
+                    this.vx *= -mesa.amortiguacionPared;
+                }
+                if (this.x + this.radio > mesa.x + mesa.ancho) {
+                    this.x = mesa.x + mesa.ancho - this.radio;
+                    this.vx *= -mesa.amortiguacionPared;
+                }
+                if (this.y - this.radio < mesa.y) {
+                    this.y = mesa.y + this.radio;
+                    this.vy *= -mesa.amortiguacionPared;
+                }
+                if (this.y + this.radio > mesa.y + mesa.alto) {
+                    this.y = mesa.y + mesa.alto - this.radio;
+                    this.vy *= -mesa.amortiguacionPared;
+                }
+            }
+        }
+
+        let bolaBlanca, bolas;
+
+        function reiniciarBolas() {
+            bolaBlanca = new Bola(300, 315, 16, '#ffffff', true, 0, false);
+            grupoJugador = null;
+            grupoCPU = null;
+            primerImpactoBlanca = null;
+            bolasEmbocadasEsteTiro = [];
+
+            if (modoJuego === '8') {
+                let r = 16;
+                let startX = 880;
+                let startY = 315;
+                let dX = r * Math.sqrt(3);
+                let dY = r;
+
+                bolas = [
+                    bolaBlanca,
+                    new Bola(startX, startY, r, '#e74c3c', false, 1, false), 
+                    new Bola(startX + dX, startY - dY, r, '#3498db', false, 9, true), 
+                    new Bola(startX + dX, startY + dY, r, '#f1c40f', false, 2, false), 
+                    new Bola(startX + dX*2, startY - dY*2, r, '#9b59b6', false, 10, true), 
+                    new Bola(startX + dX*2, startY, r, '#111111', false, 8, false), 
+                    new Bola(startX + dX*2, startY + dY*2, r, '#2ecc71', false, 3, false), 
+                    new Bola(startX + dX*3, startY - dY*3, r, '#e67e22', false, 11, true),
+                    new Bola(startX + dX*3, startY - dY, r, '#c0392b', false, 4, false),
+                    new Bola(startX + dX*3, startY + dY, r, '#2980b9', false, 12, true),
+                    new Bola(startX + dX*3, startY + dY*3, r, '#d35400', false, 13, true),
+                    new Bola(startX + dX*4, startY - dY*4, r, '#27ae60', false, 5, false), 
+                    new Bola(startX + dX*4, startY - dY*2, r, '#8e44ad', false, 14, true),
+                    new Bola(startX + dX*4, startY, r, '#f39c12', false, 6, false),
+                    new Bola(startX + dX*4, startY + dY*2, r, '#16a085', false, 15, true),
+                    new Bola(startX + dX*4, startY + dY*4, r, '#2c3e50', false, 7, false)  
+                ];
+            } else if (modoJuego === 'pull') {
+                bolas = [
+                    bolaBlanca,
+                    new Bola(850, 315, 16, '#e74c3c', false, 1, false),
+                    new Bola(880, 298, 16, '#3498db', false, 2, false),
+                    new Bola(880, 332, 16, '#f1c40f', false, 3, false),
+                    new Bola(910, 281, 16, '#9b59b6', false, 4, false),
+                    new Bola(910, 315, 16, '#e67e22', false, 5, false),
+                    new Bola(910, 349, 16, '#27ae60', false, 6, false),
+                    new Bola(940, 264, 16, '#c0392b', false, 7, false),
+                    new Bola(940, 298, 16, '#111111', false, 8, false),
+                    new Bola(940, 332, 16, '#2980b9', false, 9, true),
+                    new Bola(940, 366, 16, '#d35400', false, 10, true)
+                ];
+            } else {
+                bolas = [
+                    bolaBlanca,
+                    new Bola(900, 315, 16, '#2c3e50', false, 10, false),
+                    new Bola(928, 298, 16, '#8e44ad', false, 11, true),
+                    new Bola(928, 332, 16, '#16a085', false, 12, false),
+                    new Bola(956, 281, 16, '#d35400', false, 13, true),
+                    new Bola(956, 315, 16, '#f39c12', false, 15, true),
+                    new Bola(956, 349, 16, '#e74c3c', false, 14, false)
+                ];
+            }
+            actualizarUI();
+        }
+
+        reiniciarBolas();
+
+        function actualizarUI() {
+            if (modoJuego === '8') {
+                let txtGrupo = grupoJugador ? `Tu grupo: ${grupoJugador.toUpperCase()}` : "Grupo: Por definir en 1era embocada";
+                let txtCPU = grupoCPU ? ` | CPU: ${grupoCPU.toUpperCase()}` : "";
+                statsNivelDiv.innerText = txtGrupo + txtCPU;
+            } else if (modoJuego === 'pull') {
+                let menor = bolas.filter(b => !b.esBlanca && b.enJuego).reduce((m, b) => Math.min(m, b.numero), 99);
+                statsNivelDiv.innerText = `Modo Pull/Rotación | Bola menor obligatoria: #${menor}`;
+            } else {
+                statsNivelDiv.innerText = `Juego 15 | Orden numérico estricto`;
+            }
+        }
+
+        function cambiarModo(modo) {
+            modoJuego = modo;
+            document.querySelectorAll('#menu-juegos button').forEach(b => {
+                if(!b.classList.contains('btn-reglas')) b.classList.remove('activo');
+            });
+            document.getElementById('btn-' + modo).classList.add('activo');
+            reiniciarBolas();
+            turnoJugador = true;
+            infoDiv.innerText = "Modo: " + modo.toUpperCase() + " | Turno: Jugador";
+        }
+
+        let arrastrando = false;
+        let mouseX = 0;
+        let mouseY = 0;
+        let animandoTaco = false;
+        let progresoTaco = 0;
+        let tacoAngulo = 0;
+        let tacoDistanciaRetirada = 0;
+
+        canvas.addEventListener('mousedown', (e) => {
+            if (!turnoJugador || animandoTaco) return;
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            const mx = (e.clientX - rect.left) * scaleX;
+            const my = (e.clientY - rect.top) * scaleY;
+
+            if (esMesaQuieta() && bolaBlanca.enJuego) {
+                if (Math.hypot(mx - bolaBlanca.x, my - bolaBlanca.y) < 60) {
+                    arrastrando = true;
+                }
+            }
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            mouseX = (e.clientX - rect.left) * scaleX;
+            mouseY = (e.clientY - rect.top) * scaleY;
+        });
+
+        canvas.addEventListener('mouseup', () => {
+            if (arrastrando && turnoJugador && !animandoTaco) {
+                arrastrando = false;
+                
+                let dx = mouseX - bolaBlanca.x;
+                let dy = mouseY - bolaBlanca.y;
+                tacoAngulo = Math.atan2(dy, dx);
+                
+                let distanciaArrate = Math.hypot(bolaBlanca.x - mouseX, bolaBlanca.y - mouseY);
+                let potencia = Math.min(distanciaArrate * 0.55, 45);
+
+                primerImpactoBlanca = null;
+                bolasEmbocadasEsteTiro = [];
+
+                animandoTaco = true;
+                progresoTaco = 0;
+                tacoDistanciaRetirada = Math.min(distanciaArrate, 130);
+
+                setTimeout(() => {
+                    bolaBlanca.vx = -Math.cos(tacoAngulo) * potencia;
+                    bolaBlanca.vy = -Math.sin(tacoAngulo) * potencia;
+                }, 100);
+
+                setTimeout(() => {
+                    animandoTaco = false;
+                }, 250);
+            }
+        });
+
+        function esMesaQuieta() {
+            return bolas.every(b => Math.hypot(b.vx, b.vy) < 0.15 && !b.cayendo);
+        }
+
+        function registrarEmbocada(bola) {
+            if (bola.esBlanca) {
+                setTimeout(() => {
+                    bola.x = 300;
+                    bola.y = 315;
+                    bola.vx = 0;
+                    bola.vy = 0;
+                    bola.enJuego = true;
+                    bola.cayendo = false;
+                    bola.escalaCaida = 1;
+                    bola.alphaCaida = 1;
+                }, 400);
+                bolasEmbocadasEsteTiro.push({ bola, falta: true });
+                return;
+            }
+            bolasEmbocadasEsteTiro.push({ bola, falta: false });
+        }
+
+        function evaluarReglasFinDeTiro() {
+            if (!esMesaQuieta() || animandoTaco) return;
+            if (bolas.some(b => Math.hypot(b.vx, b.vy) > 0.05 || b.cayendo)) return;
+
+            if (bolasEmbocadasEsteTiro.length > 0 || primerImpactoBlanca !== null) {
+                procesarTurnoTerminado();
+            }
+        }
+
+        function procesarTurnoTerminado() {
+            let tiroValido = true;
+            let esBlancaFalta = bolasEmbocadasEsteTiro.some(b => b.falta);
+
+            if (modoJuego === '8') {
+                if (!primerImpactoBlanca) {
+                    tiroValido = false; 
+                } else {
+                    let esRayadaImpactada = primerImpactoBlanca.esRayada;
+                    let esNegra = primerImpactoBlanca.numero === 8;
+
+                    if (grupoJugador) {
+                        let objetivoEsRayada = (grupoJugador === 'rayadas');
+                        if (esNegra) {
+                            let misBolasRestantes = bolas.filter(b => !b.esBlanca && b.numero !== 8 && b.enJuego && (b.esRayada === objetivoEsRayada));
+                            if (misBolasRestantes.length > 0) {
+                                tiroValido = false; 
+                            }
+                        } else if (esRayadaImpactada !== objetivoEsRayada) {
+                            tiroValido = false; 
+                        }
+                    }
+                }
+
+                if (!tiroValido || esBlancaFalta) {
+                    infoDiv.innerText = "¡TIRO MAS MALO QUE EL AMERICA!.";
+                    cambiarTurno();
+                    bolasEmbocadasEsteTiro = [];
+                    primerImpactoBlanca = null;
+                    return;
+                }
+
+                let bolasValidasMias = bolasEmbocadasEsteTiro.filter(item => !item.falta && item.bola.numero !== 8);
+                let metioNegra = bolasEmbocadasEsteTiro.some(item => !item.falta && item.bola.numero === 8);
+
+                if (metioNegra) {
+                    let objetivoEsRayada = grupoJugador === 'RAYADAS';
+                    let misBolasRestantes = bolas.filter(b => !b.esBlanca && b.numero !== 8 && b.enJuego && (b.esRayada === objetivoEsRayada));
+                    if (grupoJugador && misBolasRestantes.length === 0) {
+                        infoDiv.innerText = turnoJugador ? "GANASTE CANIJO!!" : "¡PERDISTE CANIJO!!!!";
+                    } else {
+                        infoDiv.innerText = "LA CAG... METISTE LA NEGRA ANTES CANIJO.";
+                    }
+                    setTimeout(() => reiniciarBolas(), 3000);
+                    return;
+                }
+
+                if (bolasValidasMias.length > 0) {
+                    let primeraEmbocada = bolasValidasMias[0].bola;
+                    if (!grupoJugador) {
+                        grupoJugador = primeraEmbocada.esRayada ? 'rayadas' : 'lisas';
+                        grupoCPU = grupoJugador === 'rayadas' ? 'lisas' : 'rayadas';
+                        infoDiv.innerText = `¡Grupo asignado! Eres: ${grupoJugador.toUpperCase()}`;
+                    }
+                    let esMiGrupo = primeraEmbocada.esRayada === (grupoJugador === 'rayadas');
+                    if (!esMiGrupo) {
+                        cambiarTurno();
+                    } else {
+                        infoDiv.innerText = "WORALES CARNALILLO SE MEHACE QUE ESTA INCLINADA LA MESA DEL WEY DE ANGELITO";
+                    }
+                } else {
+                    cambiarTurno();
+                }
+
+            } else if (modoJuego === 'pull') {
+                let menorNum = bolas.filter(b => !b.esBlanca && b.enJuego).reduce((m, b) => Math.min(m, b.numero), 99);
+                if (!primerImpactoBlanca || primerImpactoBlanca.numero !== menorNum || esBlancaFalta) {
+                    infoDiv.innerText = `¡Falta en Pull! Debías golpear primero la bola #${menorNum}. Cambio de turno.`;
+                    cambiarTurno();
+                } else {
+                    let metioAlMenosUna = bolasEmbocadasEsteTiro.filter(b => !b.falta).length > 0;
+                    if (metioAlMenosUna) {
+                        infoDiv.innerText = "¡ESTA INCLIDA ESTA MADR.. CHE ANGELITO.";
+                    } else {
+                        cambiarTurno();
+                    }
+                }
+            } else {
+                let menorNum = bolas.filter(b => !b.esBlanca && b.enJuego).reduce((m, b) => Math.min(m, b.numero), 99);
+                if (!primerImpactoBlanca || primerImpactoBlanca.numero !== menorNum || esBlancaFalta) {
+                    infoDiv.innerText = `TIRO MALO #${menorNum} obligatoriamente.`;
+                    cambiarTurno();
+                } else {
+                    let metioCorrecta = bolasEmbocadasEsteTiro.some(b => !b.falta && b.bola.numero === menorNum);
+                    if (metioCorrecta && menorNum === 15) {
+                        infoDiv.innerText = "¡Juego 15 completado con éxito!";
+                    } else if (!metioCorrecta) {
+                        cambiarTurno();
+                    }
+                }
+            }
+
+            bolasEmbocadasEsteTiro = [];
+            primerImpactoBlanca = null;
+            actualizarUI();
+
+            if (!turnoJugador) {
+                setTimeout(turnoIAInteligente, 1000);
+            }
+        }
+
+        function cambiarTurno() {
+            turnoJugador = !turnoJugador;
+            infoDiv.innerText = turnoJugador ? "Turno: Jugador (Tú)" : "Turno: CPU pensando jugada legal...";
+        }
+
+        function turnoIAInteligente() {
+            if (turnoJugador || !esMesaQuieta() || animandoTaco) return;
+
+            let objetivosValidos = [];
+            
+            if (modoJuego === '8') {
+                let objetivoEsRayada = grupoCPU === 'rayadas';
+                if (!grupoCPU) {
+                    objetivosValidos = bolas.filter(b => !b.esBlanca && b.numero !== 8 && b.enJuego);
+                } else {
+                    objetivosValidos = bolas.filter(b => !b.esBlanca && b.numero !== 8 && b.enJuego && (b.esRayada === objetivoEsRayada));
+                    if (objetivosValidos.length === 0) {
+                        objetivosValidos = bolas.filter(b => !b.esBlanca && b.numero === 8 && b.enJuego); 
+                    }
+                }
+            } else {
+                let menorNum = bolas.filter(b => !b.esBlanca && b.enJuego).reduce((m, b) => Math.min(m, b.numero), 99);
+                objetivosValidos = bolas.filter(b => b.numero === menorNum && b.enJuego);
+            }
+
+            if (objetivosValidos.length > 0) {
+                let mejorObjetivo = objetivosValidos[0];
+                let menorDistancia = 9999;
+
+                objetivosValidos.forEach(obj => {
+                    let d = Math.hypot(obj.x - bolaBlanca.x, obj.y - bolaBlanca.y);
+                    if (d < menorDistancia) {
+                        menorDistancia = d;
+                        mejorObjetivo = obj;
+                    }
+                });
+
+                let anguloTiro = Math.atan2(mejorObjetivo.y - bolaBlanca.y, mejorObjetivo.x - bolaBlanca.x);
+                let potenciaCPU = 14 + Math.random() * 6;
+
+                primerImpactoBlanca = mejorObjetivo; 
+                bolaBlanca.vx = Math.cos(anguloTiro) * potenciaCPU;
+                bolaBlanca.vy = Math.sin(anguloTiro) * potenciaCPU;
+            }
+        }
+
+        function resolverColisiones() {
+            for (let i = 0; i < bolas.length; i++) {
+                for (let j = i + 1; j < bolas.length; j++) {
+                    let b1 = bolas[i];
+                    let b2 = bolas[j];
+
+                    if (!b1.enJuego || !b2.enJuego || b1.cayendo || b2.cayendo) continue;
+
+                    let dx = b2.x - b1.x;
+                    let dy = b2.y - b1.y;
+                    let distancia = Math.hypot(dx, dy);
+                    let distanciaMinima = b1.radio + b2.radio;
+
+                    if (distancia < distanciaMinima) {
+                        if (b1.esBlanca && primerImpactoBlanca === null) {
+                            primerImpactoBlanca = b2;
+                        } else if (b2.esBlanca && primerImpactoBlanca === null) {
+                            primerImpactoBlanca = b1;
+                        }
+
+                        let superposicion = distanciaMinima - distancia;
+                        let nx = dx / distancia;
+                        let ny = dy / distancia;
+
+                        b1.x -= nx * superposicion * 0.5;
+                        b1.y -= ny * superposicion * 0.5;
+                        b2.x += nx * superposicion * 0.5;
+                        b2.y += ny * superposicion * 0.5;
+
+                        let kx = b1.vx - b2.vx;
+                        let ky = b1.vy - b2.vy;
+                        let p = 2 * (nx * kx + ny * ky) / 2;
+
+                        b1.vx -= p * nx;
+                        b1.vy -= p * ny;
+                        b2.vx += p * nx;
+                        b2.vy += p * ny;
+                    }
+                }
+            }
+        }
+
+        function dibujarMesa() {
+            ctx.fillStyle = '#050302';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.strokeStyle = '#ff007f';
+            ctx.lineWidth = 16;
+            ctx.strokeRect(mesa.x - 8, mesa.y - 8, mesa.ancho + 16, mesa.alto + 16);
+
+            const pañoGrad = ctx.createLinearGradient(mesa.x, mesa.y, mesa.x, mesa.y + mesa.alto);
+            pañoGrad.addColorStop(0, "#023020");
+            pañoGrad.addColorStop(1, "#011a12");
+            ctx.fillStyle = pañoGrad;
+            ctx.fillRect(mesa.x, mesa.y, mesa.ancho, mesa.alto);
+
+            buchacas.forEach(b => {
+                ctx.beginPath();
+                ctx.arc(b.x, b.y, b.radio, 0, Math.PI * 2);
+                ctx.fillStyle = '#000000';
+                ctx.fill();
+                ctx.strokeStyle = '#443322';
+                ctx.lineWidth = 3;
+                ctx.stroke();
+                ctx.closePath();
+            });
+        }
+
+        function dibujarTacoYAnimacion() {
+            let anguloT = 0;
+            let offsetRetirada = 0;
+
+            if (arrastrando) {
+                let dx = mouseX - bolaBlanca.x;
+                let dy = mouseY - bolaBlanca.y;
+                anguloT = Math.atan2(dy, dx);
+                let distancia = Math.min(Math.hypot(dx, dy), 130);
+                offsetRetirada = distancia + 20;
+
+                ctx.beginPath();
+                ctx.moveTo(bolaBlanca.x, bolaBlanca.y);
+                ctx.lineTo(bolaBlanca.x + dx, bolaBlanca.y + dy);
+                ctx.strokeStyle = '#00f0ff';
+                ctx.lineWidth = 3;
+                ctx.setLineDash([8, 6]);
+                ctx.stroke();
+                ctx.setLineDash([]);
+                ctx.closePath();
+            } else if (animandoTaco) {
+                anguloT = tacoAngulo;
+                progresoTaco += 0.2;
+                offsetRetirada = Math.max(0, tacoDistanciaRetirada * (1 - progresoTaco * 2));
+            } else {
+                return;
+            }
+
+            ctx.save();
+            ctx.translate(bolaBlanca.x, bolaBlanca.y);
+            ctx.rotate(anguloT);
+
+            const tacoGrad = ctx.createLinearGradient(0, -6, 0, 6);
+            tacoGrad.addColorStop(0, '#3d2314');
+            tacoGrad.addColorStop(0.5, '#c88a52');
+            tacoGrad.addColorStop(1, '#21120a');
+
+            ctx.fillStyle = tacoGrad;
+            ctx.fillRect(25 + offsetRetirada, -5, 380, 10);
+
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(15 + offsetRetirada, -4, 10, 8);
+            ctx.restore();
+        }
+
+        function gameLoop() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            dibujarMesa();
+            resolverColisiones();
+            bolas.forEach(bola => {
+                bola.actualizar();
+                bola.dibujar();
+            });
+
+            dibujarTacoYAnimacion();
+            evaluarReglasFinDeTiro();
+
+            if (!turnoJugador && esMesaQuieta() && !animandoTaco && bolasEmbocadasEsteTiro.length === 0) {
+                setTimeout(turnoIAInteligente, 800);
+            }
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        gameLoop();
+    </script>
+</body>
+</html>
